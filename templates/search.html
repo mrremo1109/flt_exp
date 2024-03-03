@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>HOMEPAGE</title>
+    <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      background-image: url('https://images.pexels.com/photos/7276681/pexels-photo-7276681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-color: 
+    }
+
+    .container {
+      padding-top: 70px;
+    }
+
+    /* Custom styles for the table */
+    .custom-table {
+        background-color: #f8f9fa; /* Change background color */
+        color: #212529; /* Change text color */
+        border-color: #dee2e6; /* Change border color */
+        /* Add any additional styles you want */
+    }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-light bg-primary">
+        <a class="navbar-brand h3 text-white" href="/">Home</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav mr-auto">
+          </ul>
+        </div>
+    </nav>
+    <dev>
+        <center>
+            <h3>BOOK YOUR TICKET!!!</h3>
+        </center>
+    </dev>
+    <div class="container">
+        <form id="searchForm" action="/bookingdeatils" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="originCity">Origin City:</label>
+                    <select id="originCity" name="originCity" class="form-control">
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="destinationCity">Destination City:</label>
+                    <select id="destinationCity" name="destinationCity" class="form-control">
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="departdate">Depart Date:</label>
+                    <input type="date" id="departdate" name="departdate" class="form-control mb-2 mr-sm-2">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="airline">Airline:</label>
+                    <select id="airline" name="airline" class="form-control">
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="currencySelect">Currency:</label>
+                    <select id="currencySelect" name="currency" class="form-control">
+                        <option value="">Select Currency...</option>
+                    </select>
+                </div>
+            </div>
+            <button type="button" id="searchFlightsBtn" class="btn btn-primary">Search Flights</button>
+        </form>
+        <div id="flightResults" class="mt-4"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <script>
+        var globalCurrencyRates = {}; // Store the currency rates globally
+        var globalFlightData = []; // Store the flight data globally
+
+        // Function to fetch and populate the dropdown for currency selection
+        function fetchAndPopulateCurrencyDropdown() {
+            fetch("http://127.0.0.1:5000/currency_rates")
+                .then(response => response.json())
+                .then(rates => {
+                    globalCurrencyRates = rates; // Store the rates globally
+                    const currencySelect = document.getElementById("currencySelect");
+                    currencySelect.innerHTML = ''; // Clear existing options
+                    Object.keys(rates).forEach(currency => {
+                        const option = new Option(currency, currency);
+                        currencySelect.add(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching currency rates:', error);
+                });
+        }
+
+        function updatePrices(selectedCurrency) {
+            const rate = globalCurrencyRates[selectedCurrency];
+            globalFlightData.forEach(flight => {
+                flight.convertedPrice = (flight.price * rate).toFixed(2) + ' ' + selectedCurrency;
+            });
+            displayFlightResults(globalFlightData); // Redisplay flights with updated prices
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            // Fetch origin city data
+            fetchOriginCityData();
+
+            // Fetch destination city data
+            fetchDestinationCityData();
+
+            fetchDepartureDateData();
+
+            fetchAirlineData()
+
+            fetchAndDisplayCurrencyRates();
+
+            
+            // Add event listener to search flights button
+            document.getElementById("searchFlightsBtn").addEventListener("click", function() {
+                // Get form data
+                var originCity = document.getElementById("originCity").value;
+                var destinationCity = document.getElementById("destinationCity").value;
+                var departdate = document.getElementById("departdate").value;
+                var airline = document.getElementById("airline").value;
+
+                // Construct URL with query parameters
+                var url = "http://127.0.0.1:5000/api/search";
+                url += "?originCity=" + encodeURIComponent(originCity);
+                url += "&destinationCity=" + encodeURIComponent(destinationCity);
+                url += "&departdate=" + encodeURIComponent(departdate);
+                url += "&airline=" + encodeURIComponent(airline);
+
+                // Fetch flight data from API
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        displayFlightResults(data);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+        });
+
+        function fetchOriginCityData() {
+            fetch("http://127.0.0.1:5000/api/origincity")
+                .then(response => response.json())
+                .then(data => {
+                    populateDropdown("originCity", data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function fetchDestinationCityData() {
+            fetch("http://127.0.0.1:5000/api/destinationcity")
+                .then(response => response.json())
+                .then(data => {
+                    populateDropdown("destinationCity", data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function fetchDepartureDateData() {
+            fetch("http://127.0.0.1:5000/api/departuredate")
+                .then(response => response.json())
+                .then(data => {
+                    populateDropdown("departdate", data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function fetchAirlineData() {
+            fetch("http://127.0.0.1:5000/api/airline")
+                .then(response => response.json())
+                .then(data => {
+                    populateDropdown("airline", data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function populateDropdown(elementId, data) {
+            var dropdown = document.getElementById(elementId);
+            data.forEach(function(item) {
+                var option = document.createElement("option");
+                option.value = item;
+                option.text = item;
+                dropdown.appendChild(option);
+            });
+        }
+        function fetchAndPopulateCurrencyDropdown() {
+            fetch("http://127.0.0.1:5000/currency_rates")
+            .then(response => response.json())
+            .then(rates => {
+                const currencySelect = document.getElementById("currencySelect");// Clear any previous options
+                currencySelect.innerHTML = '<option value="">Select Currency...</option>';            // Populate the dropdown with currency options
+                for (const currency in rates) {
+                const option = document.createElement("option");
+                option.value = currency;
+                option.textContent = currency;
+                currencySelect.appendChild(option);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching currency rates:', error);
+        });
+}
+
+document.addEventListener("DOMContentLoaded", fetchAndPopulateCurrencyDropdown);
+
+
+        var globalCurrencyRates = {};
+
+        function fetchAndDisplayCurrencyRates() {
+            fetch("http://127.0.0.1:5000/currency_rates")
+            .then(response => response.json())
+            .then(rates => {
+                globalCurrencyRates = rates; // Store the rates in the global variable
+                // If you need to update the flight results with currency rates after fetching them,
+                // call displayFlightResults here with the current flight data and the new rates.
+            })
+            .catch(error => {
+                console.error('Error fetching currency rates:', error);
+            });
+        }
+
+        var globalFlightData = []
+
+function displayFlightResults(data, selectedCurrency = 'USD') {
+    var flightResultsDiv = document.getElementById("flightResults");
+    flightResultsDiv.innerHTML = "";
+
+    if (data.length === 0) {
+        flightResultsDiv.textContent = "No flights found.";
+        return;
+    }
+
+    // Check if currency rates are available
+    if (!globalCurrencyRates || Object.keys(globalCurrencyRates).length === 0) {
+        console.error('Currency rates not available.');
+        return;
+    }
+
+    // Create table to display flight results
+    var table = document.createElement("table");
+    table.classList.add("table", "table-bordered", "mt-2", "custom-table");
+
+    // Create table header
+    var thead = document.createElement("thead");
+    thead.innerHTML = `
+        <tr>
+            <th>Origin City</th>
+            <th>Destination City</th>
+            <th>Depart Date</th>
+            <th>Airline</th>
+            <th>No of Connection</th>
+            <th>Duration</th>
+            <th>Layover</th>
+            <th>Price</th>
+            <th>Converted Price</th>
+            <th>Action</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+
+    // Create table body
+    var tbody = document.createElement("tbody");
+    data.forEach(function(flight) {
+        var row = document.createElement("tr");
+        var rate = globalCurrencyRates[selectedCurrency];
+        var priceInSelectedCurrency = (flight.price * rate).toFixed(2);
+
+        // Fallback if conversion rate is not available
+        if (!priceInSelectedCurrency) {
+            priceInSelectedCurrency = 'N/A';
+        }
+
+        row.innerHTML = `
+            <td>${flight.origin_city}</td>
+            <td>${flight.destination_city}</td>
+            <td>${flight.depart_date}</td>
+            <td>${flight.airline}</td>
+            <td>${flight.NoofConnection}</td>
+            <td>${flight.Duration}</td>
+            <td>${flight.Layover}</td>
+            <td>${flight.price}</td>
+            <td>${priceInSelectedCurrency} ${selectedCurrency}</td>
+            <td>
+            <button class="btn btn-primary bookBtn" data-flight="${JSON.stringify(flight)}">Book</button>
+        </td>
+        `;
+        tbody.appendChild(row);
+        
+    });
+    table.appendChild(tbody);
+
+    flightResultsDiv.appendChild(table);
+
+    var bookButtons = document.querySelectorAll('.bookBtn');
+bookButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var flightData = JSON.parse(this.getAttribute('data-flight'));
+        // Create form element
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/bookingdetails'; // Endpoint for booking details
+        
+        // Create hidden input fields for each flight detail
+        for (var key in flightData) {
+            if (flightData.hasOwnProperty(key)) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = flightData[key];
+                form.appendChild(input);
+            }
+        }
+        
+        // Append form to document body and submit
+        document.body.appendChild(form);
+        form.submit();
+    });
+});
+    function fetchAndDisplayCurrencyRates() {
+        fetch("http://127.0.0.1:5000/currency_rates")
+        .then(response => response.json())
+        .then(rates => {
+            globalCurrencyRates = rates;
+        })
+        .catch(error => {
+            console.error('Error fetching currency rates:', error);
+        }); 
+    }
+    function displayCurrencyRates(rates) {
+        // Assuming 'rates' is an object with currency codes as keys and rates as values
+        const ratesDiv = document.getElementById("currencyRatesDisplay");
+        ratesDiv.innerHTML = ''; // Clear any previous content
+
+        for (const [currency, rate] of Object.entries(rates)) {
+            // Create and append each rate to the display
+            const rateInfo = document.createElement("p");
+            rateInfo.textContent = `${currency}: ${rate}`;
+            ratesDiv.appendChild(rateInfo);
+        }
+    }
+    document.getElementById("currencySelect").addEventListener("change", function() {
+        const selectedCurrency = this.value;
+        const priceElement = document.getElementById("flightPrice"); // Replace with your price element ID
+        const originalPrice = parseFloat(priceElement.textContent); // Extract the original price
+        const convertedPrice = convertPrice(originalPrice, selectedCurrency);
+        priceElement.textContent = convertedPrice; // Update the displayed price
+});
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const flightData = getFlightData(); // Replace with your data retrieval logic
+        const price = flightData.price;
+        const selectedCurrency = document.getElementById("currencySelect").value;
+        const convertedPrice = convertPrice(price, selectedCurrency);
+    });
+  }
+    </script>
+</body>
+</html>
